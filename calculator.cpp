@@ -7,7 +7,7 @@ using namespace std;
 
 class Calculator {
 private:
-  stack<int> operands_;
+  stack<double> operands_;
   stack<char> operators_;
 
   int GetPriority(char op) {
@@ -34,7 +34,7 @@ public:
     // "for (type x : container)" : 
     // a new looping syntax in c++, meaning to use "iterator of container" to get one element each time.
     for (char ch : expression) {  
-      if (isdigit(ch)) {
+      if (isdigit(ch) || (ch == '.')) {
         // operands_.push(ch - '0');
         // 將數字添加到stringstream中
         ss << ch;
@@ -81,7 +81,7 @@ public:
           // refer to : https://aprilyang.home.blog/2020/04/17/stringstream-to-read-int-from-a-string/
           //            https://hackmd.io/@Maxlight/rJwlvj8ad
           //            https://cplusplus.com/reference/sstream/stringstream/str/
-          int tmp_operand = 0;
+          double tmp_operand = 0;
           ss >> tmp_operand;
           operands_.push(tmp_operand);
           ss.str(""); // make ss.str().length() = 0.
@@ -109,13 +109,13 @@ public:
           while (operators_.top() != '(') {
             // pop 2 operands from stack top, and pop one operator each time.
             // push the result of "operand1 op operand2" back to stack as the new operand2.
-            int operand2 = operands_.top();
+            double operand2 = operands_.top();
             operands_.pop();
-            int operand1 = operands_.top();
+            double operand1 = operands_.top();
             operands_.pop();
             char op = operators_.top();
             operators_.pop();
-            int result;
+            double result;
             switch (op) {
               case '+':
                 result = operand1 + operand2;
@@ -147,13 +147,13 @@ public:
           //
           while (!operators_.empty() && operators_.top() != '(' &&
                 GetPriority(operators_.top()) >= GetPriority(ch)) {
-            int operand2 = operands_.top();
+            double operand2 = operands_.top();
             operands_.pop();
-            int operand1 = operands_.top();
+            double operand1 = operands_.top();
             operands_.pop();
             char op = operators_.top();
             operators_.pop();
-            int result;
+            double result;
             switch (op) {
               case '+':
                 result = operand1 + operand2;
@@ -192,7 +192,7 @@ public:
       // refer to : https://aprilyang.home.blog/2020/04/17/stringstream-to-read-int-from-a-string/
       //            https://hackmd.io/@Maxlight/rJwlvj8ad
       //            https://cplusplus.com/reference/sstream/stringstream/str/
-      int tmp_operand = 0;
+      double tmp_operand = 0;
       ss >> tmp_operand;
       operands_.push(tmp_operand);
       ss.str(""); // make ss.str().length() = 0.
@@ -202,13 +202,13 @@ public:
     }
 
     while (!operators_.empty()) {
-      int operand2 = operands_.top();
+      double operand2 = operands_.top();
       operands_.pop();
-      int operand1 = operands_.top();
+      double operand1 = operands_.top();
       operands_.pop();
       char op = operators_.top();
       operators_.pop();
-      int result;
+      double result;
       switch (op) {
         case '+':
           result = operand1 + operand2;
@@ -225,7 +225,7 @@ public:
       }
       operands_.push(result);
     }
-
+    // print fraction part of result in at most 3 decimal points.
     cout << operands_.top() << endl;
   }
 
@@ -238,6 +238,8 @@ int main() {
   // 1+2*(3+4*(5+6*7+1))*(8+9) = 6631
   // 12345+67890           = 80235
   // 12+34*(56+78*2)*(1+2) = 21636
+  // 12.+13.45*(23.56+47.8*2) = 1614.702
+  //
   cin >> expression;
 
   Calculator calculator;
