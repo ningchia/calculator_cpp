@@ -1,9 +1,21 @@
 #include <iostream>
 #include <stack>
 #include <sstream>  // for std::stringstream
-//#include <format>   // for std::format, but it's c++ std 20, so onlyu gcc 13.1 or above supports it !!
+//#include <format>   // for std::format, but it's c++ std 20. Only gcc 13.1 or above supports it !!
+#include <iomanip>  // for std::fixed, std::setprecision, ... to control cout's output for int/float/double
 
+// notice we use the following statement to tell compiler to try search symbols with leading "std::" as well.
+// ie. stack<xx>  means   std::stack<xx>
+//     cin        means   std::cin
+//     cout       means   std::cout
+//     stringstream means std::stringstream
+//     hex        means   std::hex
+//     ...
 using namespace std;
+
+// Whether to enable the part testing cout (std::cout) controls.
+//
+//#define Also_Run_Console_Out_Test
 
 class Calculator {
 private:
@@ -225,25 +237,132 @@ public:
       }
       operands_.push(result);
     }
-    // print fraction part of result in at most 3 decimal points.
-    cout << operands_.top() << endl;
+    // print fraction part of result with proper decimal digits.
+    // TBD : to determine the best number of decimal digits to display.
+    cout << endl << "Result = " << fixed << setprecision(6) << operands_.top() << endl;
   }
 
 };
 
+#ifdef Also_Run_Console_Out_Test
+void cout_control_test(void);   // this test requires #include <iomanip>.
+#endif
+
 int main() {
+  cout << "Calculator Test. Please enter teh expression to evaluate :" << endl; 
   string expression;
   // use the following string for testing, and debug step-by-step to understand how this program runs : 
   // 
   // 1+2*(3+4*(5+6*7+1))*(8+9) = 6631
   // 12345+67890           = 80235
   // 12+34*(56+78*2)*(1+2) = 21636
-  // 12.+13.45*(23.56+47.8*2) = 1614.702
+  // c = 1614.702
   //
   cin >> expression;
 
   Calculator calculator;
   calculator.Evaluate(expression);
 
+#ifdef Also_Run_Console_Out_Test
+  cout << endl << "--- Console out control test ---" << endl; 
+  cout_control_test();
+#endif
+
   return 0;
 }
+
+#ifdef Also_Run_Console_Out_Test
+
+void cout_control_test(void)
+{
+  // How to declare float/double number in program, and control precision when cout them.
+  //   ref link : https://www.programiz.com/cpp-programming/float-double
+  //
+  // notice for float (32bit) 23 bits are used for the mantissa (about 7 decimal digits).
+  // while for double (64bit) 52 bits are used for the mantissa (about 16 decimal digits)
+  double a = 39.12348239;   // var with dicimal points but without trailing "f" will be interpreted as of "double" type.
+  float  b = 39.12348239f;  // var of float type should be assigned by a number with trailing "f".
+
+  // Modifiers only affect fpt numbers : "std::setprecision()", "std::fixed", "std::scientific".
+  // Have persistent effect : ALL. 
+  //
+  // ----- Console output of the following code ----
+  //  Test 1 : c++ Modifiers affacting fpt numbers 3.912348239
+  //   <Default             > a(double)=39.1235, b(float)=39.1235
+  //   <fixed, precision=8  > a(double)=39.12348239, b(float)=39.12348175
+  //   <Retest w/o modifiers> a(double)=39.12348239, b(float)=39.12348175
+  //   <scientific, precision=2> a(double)=3.91e+01, b(float)=3.91e+01
+  //   <Retest w/o modifiers   > a(double)=3.91e+01, b(float)=3.91e+01
+  //   <reset back to default  > a(double)=39.1235, b(float)=39.1235
+  //
+  cout << " Test 1 : c++ Modifiers affacting fpt numbers 3.912348239" << endl;
+  cout << "  <Default             > ";
+  cout << "a(double)=" << a << ", b(float)=" << b << endl;
+  cout << "  <fixed, precision=8  > " << fixed << setprecision(8);
+  cout << "a(double)=" << a << ", b(float)=" << b << endl;
+  cout << "  <Retest w/o modifiers> ";
+  cout << "a(double)=" << a << ", b(float)=" << b << endl;
+  cout << "  <scientific, precision=2> "  << scientific << setprecision(2);
+  cout << "a(double)=" << a << ", b(float)=" << b << endl;
+  cout << "  <Retest w/o modifiers   > ";
+  cout << "a(double)=" << a << ", b(float)=" << b << endl;
+  
+  // to reset back to default, Gemini mentioned "ios::defaultfmt", "ios:generic", but they are not 
+  // defined in fact. let's use cout.unsetf() and set presision back to default (6) instead.
+  cout << "  <reset back to default  > ";
+  cout.unsetf(ios::fixed | ios::scientific);  
+  cout << setprecision(6);  // default is 6.
+  cout << "a(double)=" << a << ", b(float)=" << b << endl;
+
+  // notice "std::setprecision", "std::fixed", and "std::scientific" only affect floating-point numbers.
+  //
+  // ----- Console output of the following code ----
+  //  Test 2 : c++ Output integer c -128
+  //   <No modifiers. No effect on integers.> c(int)=-128, c(uint)=4294967168
+  //
+  cout << " Test 2 : c++ Output integer c -128" << endl;
+  int c = -128;
+  cout << "  <No modifiers. No effect on integers.> c(int)=" << c << ", c(uint)=" << (unsigned int)c << endl;
+
+  // Modifiers only affect integers : "std::hex","std::dec","std::oct","std::showbase","std::right","std::setw()".
+  // Have persistent effect : "std::hex","std::dec","std::oct","std::showbase","std::right" 
+  // Only effective for once : "std::setw()"
+  //
+  // ----- Console output of the following code ----
+  //  Test 3 : c++ Modifiers affecting integers -128
+  //   <hex, showbase, width=8, right-aligned> c(int)='0xffffff80'
+  //   <Retest w/i width=10                  > c(int)='0xffffff80'
+  //   <Retest w/o modifiers                 > c(int)='0xffffff80'
+  //   <Retest on fpt number. No effect.     > a(double)='39.1235'
+  //
+  cout << " Test 3 : c++ Modifiers affecting integers -128" << endl;
+  cout << "  <hex, showbase, width=8, right-aligned> c(int)='" << hex << showbase << setw(8) << right << c << "'" << endl;
+  cout << "  <Retest w/i width=10                  > c(int)='" << setw(10) << c << "'" << endl;
+  cout << "  <Retest w/o modifiers                 > c(int)='" << c << "'" << endl;
+  cout << "  <Retest on fpt number. No effect.     > a(double)='" << a << "'" << endl;
+  
+  // cout is too lousy to control. That's why we still use c-style printf in c++ for debugging.
+  // by the way, notice to use c-lib in c++ programs, the best practice is to include c-equivalent header
+  // instead of c headers, they imports symbols into namespace "std".
+  // More precisely, The difference is that stdio.h and other C-like libraries when imported in a C++ file 
+  // may pollute the global namespace, while the corresponding C++ headers (cstdio, cstdlib, cassert) place 
+  // the corresponding functions, variables, etc., in the std namespace.
+  // ref link : https://cplusplus.com/reference/cstdio/
+  //
+  // for example, to include stdio.h, we should,
+  //
+  //   #include <cstdio>    // instead of #include <stdio.h>
+  //
+  // However, in this test we didn't include <cstdio>, but printf still works !! 
+  // Need to check whether <iostream> had ever included <cstdio> already.
+  //
+  // ----- Console output of the following code ----
+  //  Test 4 : use c printf still.
+  //   fpt/double with precision 8, width 12 : a(double)=' 39.12348239', b(float)=' 39.12348175'
+  //   int with width 12 : c(int)='        -128', c(uint)='  4294967168', c(in 8 hex digits)='0xffffff80'
+  //
+  printf(" Test 4 : use c printf still.\n");
+  printf("  fpt/double with precision 8, width 12 : a(double)='%12.8f', b(float)='%12.8f'\n", a, b);
+  printf("  int with width 12 : c(int)='%12d', c(uint)='%12u', c(in 8 hex digits)='0x%08x'\n", c, c, c);
+}
+#endif
