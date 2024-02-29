@@ -3,6 +3,8 @@
 #include <sstream>  // for std::stringstream
 //#include <format>   // for std::format, but it's c++ std 20. Only gcc 13.1 or above supports it !!
 #include <iomanip>  // for std::fixed, std::setprecision, ... to control cout's output for int/float/double
+#include <cmath>    // for floor, ceil, pow
+
 
 // notice we use the following statement to tell compiler to try search symbols with leading "std::" as well.
 // ie. stack<xx>  means   std::stack<xx>
@@ -16,6 +18,10 @@ using namespace std;
 // Whether to enable the part testing cout (std::cout) controls.
 //
 //#define Also_Run_Console_Out_Test
+
+// Whether to enable the part testing float/double precision and how to round to best position.
+//
+#define Also_Run_Precision_Test
 
 class Calculator {
 private:
@@ -248,6 +254,10 @@ public:
 void cout_control_test(void);   // this test requires #include <iomanip>.
 #endif
 
+#ifdef Also_Run_Precision_Test
+void precision_test(void);   // this test requires #include <cmath>.
+#endif
+
 int main() {
   cout << "Calculator Test. Please enter teh expression to evaluate :" << endl; 
   string expression;
@@ -256,7 +266,7 @@ int main() {
   // 1+2*(3+4*(5+6*7+1))*(8+9) = 6631
   // 12345+67890           = 80235
   // 12+34*(56+78*2)*(1+2) = 21636
-  // c = 1614.702
+  // 12.+13.45*(23.56+47.8*2) = 1614.702
   //
   cin >> expression;
 
@@ -266,6 +276,10 @@ int main() {
 #ifdef Also_Run_Console_Out_Test
   cout << endl << "--- Console out control test ---" << endl; 
   cout_control_test();
+#endif
+#ifdef Also_Run_Precision_Test
+  cout << endl << "--- Float/Double presision and round to best position test ---" << endl; 
+  precision_test();
 #endif
 
   return 0;
@@ -365,4 +379,54 @@ void cout_control_test(void)
   printf("  fpt/double with precision 8, width 12 : a(double)='%12.8f', b(float)='%12.8f'\n", a, b);
   printf("  int with width 12 : c(int)='%12d', c(uint)='%12u', c(in 8 hex digits)='0x%08x'\n", c, c, c);
 }
+#endif
+
+#ifdef Also_Run_Precision_Test
+
+// round routine.
+// round to 1st decimal = multiply by 10, add 0.5 to it, then drop the faction part, and then divide by 10. 
+// the template class T can be float or double.
+template <class T>
+T round(T value, int decimal_digits) {
+  return floor(value * pow(10, decimal_digits) + 0.5) / pow(10, decimal_digits);
+}
+
+template <class T>
+int round_to_best_precision(T orig, T &result){
+  int idxDigit = 0;
+  T difference;
+  
+  while(1) {
+    result = round(orig, idxDigit);
+    difference = orig - result;
+    if (difference == 0) break;
+    idxDigit++;
+  }
+
+  return idxDigit;
+}
+
+void precision_test(void){
+  float x = 3.192837465f;
+  double y = 321.192837465;
+  double z = 123.00;
+
+  cout << "originally            x(float)='3.192837465', y(double)='321.192837465', z(double)='123.00'" << endl;
+  cout << fixed << setprecision(9);
+  cout << "after precision loss, x(float)='" << x << "', y(double)='" << y << "', z(double)='" << z << "'" << endl;
+  cout << fixed;
+  float x_result;
+  int idx = round_to_best_precision<float>(x, x_result);
+  cout << setprecision(idx);
+  cout << "After rounding to " << idx << "th decimal digit, result x='" << x_result << "'" << endl;
+  double y_result;
+  idx = round_to_best_precision<double>(y, y_result);
+  cout << setprecision(idx);
+  cout << "After rounding to " << idx << "th decimal digit, result y='" << y_result << "'" << endl;
+  double z_result;
+  idx = round_to_best_precision<double>(z, z_result);
+  cout << setprecision(idx);
+  cout << "After rounding to " << idx << "th decimal digit, result y='" << z_result << "'" << endl;
+}
+
 #endif
