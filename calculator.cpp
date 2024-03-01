@@ -57,7 +57,25 @@ private:
     while(1) {
       result_after_round = calc_round(result_, idxDigit);
       difference = result_ - result_after_round;
-      if (difference == 0) break;
+      // NOTICE : 
+      // We cannot use the expression (x-y == 0) to tell whether 2 floating point values are equivalent.
+      //   if (difference == 0) break;
+      //
+      // this is because arithmatic operations of floating point values will cause precision loss.
+      // ex. x = 0.3;
+      //     y = 0.3;
+      //     return (x == y);       // true
+      //     return ((x - y) == 0); // true
+      //     x = 0.1 + 0.2;         // the "+" operation cause precision loss. (if it is not optimised by pre-processor)
+      //     y = 0.3
+      //     return (x == y);       // false
+      //     return ((x - y) == 0); // false
+      //
+      // The correct way to tell the equivalence is by :
+      //     if (std::abs(x - y) * 2 / (x + y)) < threshold)  // say, threshold = 1e-6.
+      //        return equal.
+      if (difference < 0) difference = 0 - difference;
+      if ((difference * 2 / (result_ + result_after_round)) < 1e-6) break;
       idxDigit++;
     }
     result_ = result_after_round;
@@ -482,7 +500,11 @@ int round_to_best_precision(T orig, T &result){
   while(1) {
     result = round(orig, idxDigit);
     difference = orig - result;
-    if (difference == 0) break;
+    // Use the correct way to tell the equivalence :
+    //   if (std::abs(x - y) * 2 / (x + y)) < threshold)  // say, threshold = 1e-6.
+    //     return equal.
+    if (difference < 0) difference = 0 - difference;
+    if ((difference * 2 / (orig + result)) < 1e-6) break;
     idxDigit++;
   }
 
