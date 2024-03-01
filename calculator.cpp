@@ -21,12 +21,16 @@ using namespace std;
 
 // Whether to enable the part testing float/double precision and how to round to best position.
 //
-#define Also_Run_Precision_Test
+//#define Also_Run_Precision_Test
 
+// T can be double or float.
+template <typename T>
 class Calculator {
 private:
-  stack<double> operands_;
+  stack<T> operands_;
   stack<char> operators_;
+  T result_ = 0;
+  int result_precision_ = 0;
 
   int GetPriority(char op) {
     switch (op) {
@@ -39,6 +43,33 @@ private:
       default:
         return 0;
     }
+  }
+
+  T calc_round(T value, int decimal_digits) {
+    return floor(value * pow(10, decimal_digits) + 0.5) / pow(10, decimal_digits);
+  }
+
+  void modify_result_to_best_precision(void){
+    int idxDigit = 0;
+    T result_after_round;
+    T difference;
+    
+    while(1) {
+      result_after_round = calc_round(result_, idxDigit);
+      difference = result_ - result_after_round;
+      if (difference == 0) break;
+      idxDigit++;
+    }
+    result_ = result_after_round;
+    result_precision_ = idxDigit;
+  }
+
+  void show_result(void){
+    cout << fixed << setprecision(result_precision_);
+    cout << result_;
+    // set cout control back to default
+    cout << setprecision(6);  
+    cout.unsetf(ios::fixed);
   }
   
 public:
@@ -99,7 +130,7 @@ public:
           // refer to : https://aprilyang.home.blog/2020/04/17/stringstream-to-read-int-from-a-string/
           //            https://hackmd.io/@Maxlight/rJwlvj8ad
           //            https://cplusplus.com/reference/sstream/stringstream/str/
-          double tmp_operand = 0;
+          T tmp_operand = 0;
           ss >> tmp_operand;
           operands_.push(tmp_operand);
           ss.str(""); // make ss.str().length() = 0.
@@ -127,13 +158,13 @@ public:
           while (operators_.top() != '(') {
             // pop 2 operands from stack top, and pop one operator each time.
             // push the result of "operand1 op operand2" back to stack as the new operand2.
-            double operand2 = operands_.top();
+            T operand2 = operands_.top();
             operands_.pop();
-            double operand1 = operands_.top();
+            T operand1 = operands_.top();
             operands_.pop();
             char op = operators_.top();
             operators_.pop();
-            double result;
+            T result;
             switch (op) {
               case '+':
                 result = operand1 + operand2;
@@ -165,13 +196,13 @@ public:
           //
           while (!operators_.empty() && operators_.top() != '(' &&
                 GetPriority(operators_.top()) >= GetPriority(ch)) {
-            double operand2 = operands_.top();
+            T operand2 = operands_.top();
             operands_.pop();
-            double operand1 = operands_.top();
+            T operand1 = operands_.top();
             operands_.pop();
             char op = operators_.top();
             operators_.pop();
-            double result;
+            T result;
             switch (op) {
               case '+':
                 result = operand1 + operand2;
@@ -210,7 +241,7 @@ public:
       // refer to : https://aprilyang.home.blog/2020/04/17/stringstream-to-read-int-from-a-string/
       //            https://hackmd.io/@Maxlight/rJwlvj8ad
       //            https://cplusplus.com/reference/sstream/stringstream/str/
-      double tmp_operand = 0;
+      T tmp_operand = 0;
       ss >> tmp_operand;
       operands_.push(tmp_operand);
       ss.str(""); // make ss.str().length() = 0.
@@ -220,13 +251,13 @@ public:
     }
 
     while (!operators_.empty()) {
-      double operand2 = operands_.top();
+      T operand2 = operands_.top();
       operands_.pop();
-      double operand1 = operands_.top();
+      T operand1 = operands_.top();
       operands_.pop();
       char op = operators_.top();
       operators_.pop();
-      double result;
+      T result;
       switch (op) {
         case '+':
           result = operand1 + operand2;
@@ -245,9 +276,60 @@ public:
     }
     // print fraction part of result with proper decimal digits.
     // TBD : to determine the best number of decimal digits to display.
-    cout << endl << "Result = " << fixed << setprecision(6) << operands_.top() << endl;
+    result_ = operands_.top();
+    cout << "result=";
+    modify_result_to_best_precision();
+    show_result();
+    cout << endl;
   }
 
+  // In most cases, the reason we have a friend function is to make it able to access private members
+  // of a class, so we will have a friend function with a parameter of "reference to the targeted class",
+  //
+  // notice the function tp o be friend of a class should be defined before the class definition, 
+  // or have a prototype there before the class definition.
+  // ex.
+  //    void ext_func(X &x, ...){   // definition before the class, or place a prototype declaration here.
+  //      x.priv_data=...;
+  //    }
+  //    class X {
+  //      private:
+  //        priv_data;
+  //      public:
+  //        friend void ext_func(X &x, ...);
+  //    }
+  //
+  // To have a template function as a friend, the containing class must have the same template parameter.
+  // ex.
+  //    template <typename T>             // have the same template param
+  //    void ext_func(X<T> &x, ...){      // use class of template param in func parameter
+  //      x.priv_data=...;
+  //    }
+  //    template <typename T>             // have the same template param
+  //    class X {
+  //      private:
+  //        priv_data;
+  //      public:
+  //        friend void ext_func<T> (X<T> &x, ...);   // use template param in both func name and parameter
+  //    }
+  // 
+  // The following doesn't work.
+  //    class Calculator {   // the containing class doesn't have the same template parameters.
+  //      ...
+  //      friend template <class T>
+  //      int round_to_best_precision(T orig, T &result);
+  //    }
+  //
+  // Correct way is :
+  //    template <class T>
+  //    int round_to_best_precision(T orig, T &result){
+  //      ...
+  //    }
+  //    template <typename T>
+  //    class Calculator {
+  //      ...
+  //      friend int round_to_best_precision<T>(T orig, T &result);
+  //    }
 };
 
 #ifdef Also_Run_Console_Out_Test
@@ -270,7 +352,8 @@ int main() {
   //
   cin >> expression;
 
-  Calculator calculator;
+  // Calculator<float> calculator;   // calculator with float type variables.
+  Calculator<double> calculator;    // calculator with double type variables.
   calculator.Evaluate(expression);
 
 #ifdef Also_Run_Console_Out_Test
@@ -381,11 +464,11 @@ void cout_control_test(void)
 }
 #endif
 
-#ifdef Also_Run_Precision_Test
-
 // round routine.
 // round to 1st decimal = multiply by 10, add 0.5 to it, then drop the faction part, and then divide by 10. 
 // the template class T can be float or double.
+//
+// also notice it's recommended to use "template <typename T>" instead of "template <class T>".
 template <class T>
 T round(T value, int decimal_digits) {
   return floor(value * pow(10, decimal_digits) + 0.5) / pow(10, decimal_digits);
@@ -405,6 +488,8 @@ int round_to_best_precision(T orig, T &result){
 
   return idxDigit;
 }
+
+#ifdef Also_Run_Precision_Test
 
 void precision_test(void){
   float x = 3.192837465f;
